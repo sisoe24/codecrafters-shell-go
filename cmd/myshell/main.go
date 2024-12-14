@@ -84,7 +84,10 @@ func main() {
 			}
 
 		case "cd":
-			if FileExists(strArgs) {
+      if strArgs == "~" {
+        home, _ := os.UserHomeDir()
+				os.Chdir(home)
+      } else if FileExists(strArgs) {
 				os.Chdir(strArgs)
 			} else {
 				fmt.Printf("cd: %s: No such file or directory\n", strArgs)
