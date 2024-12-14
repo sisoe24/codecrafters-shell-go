@@ -59,7 +59,7 @@ func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 
 	builtins := []string{
-		"echo", "type", "exit",
+		"echo", "type", "exit", "pwd",
 	}
 
 	ENV_PATH := os.Getenv("PATH")
@@ -82,6 +82,9 @@ func main() {
 				fmt.Printf("%s: not found\n", arg)
 			}
 
+		case "pwd":
+      dir, _ := os.Getwd()
+			fmt.Printf("%s\n", dir)
 		case "echo":
 			fmt.Printf("%s\n", strings.Join(command.args, " "))
 		case "exit":
