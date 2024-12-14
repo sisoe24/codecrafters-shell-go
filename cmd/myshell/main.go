@@ -59,7 +59,7 @@ func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 
 	builtins := []string{
-		"echo", "type", "exit", "pwd",
+		"echo", "type", "exit", "pwd", "cd",
 	}
 
 	ENV_PATH := os.Getenv("PATH")
@@ -68,6 +68,7 @@ func main() {
 
 		input := scanner.Text()
 		command := parseInput(input)
+		strArgs := strings.Join(command.args, " ")
 
 		switch command.command {
 		case "type":
@@ -82,17 +83,23 @@ func main() {
 				fmt.Printf("%s: not found\n", arg)
 			}
 
+		case "cd":
+			if FileExists(strArgs) {
+				os.Chdir(strArgs)
+			} else {
+				fmt.Printf("cd: %s: No such file or directory\n", strArgs)
+			}
 		case "pwd":
-      dir, _ := os.Getwd()
+			dir, _ := os.Getwd()
 			fmt.Printf("%s\n", dir)
 		case "echo":
-			fmt.Printf("%s\n", strings.Join(command.args, " "))
+			fmt.Printf("%s\n", strArgs)
 		case "exit":
 			os.Exit(0)
 		default:
 			if err := executeCommand(command); err != nil {
-        // technically not true but its good enough
-        fmt.Printf("%s: command not found\n", input)
+				// technically not true but its good enough
+				fmt.Printf("%s: command not found\n", input)
 			}
 		}
 
