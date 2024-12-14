@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -40,6 +41,18 @@ func binExists(paths string, bin string) bool {
 	return false
 }
 
+func executeCommand(command Command) error {
+	cmd := exec.Command(command.command, command.args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func main() {
 	fmt.Fprint(os.Stdout, "$ ")
 
@@ -64,7 +77,7 @@ func main() {
 			if slices.Contains(builtins, arg) {
 				fmt.Printf("%s is a shell builtin\n", arg)
 			} else if binExists(ENV_PATH, arg) {
-        // kind of ugly having nothing to do here
+				// kind of ugly having nothing to do here
 			} else {
 				fmt.Printf("%s: not found\n", arg)
 			}
@@ -74,7 +87,10 @@ func main() {
 		case "exit":
 			os.Exit(0)
 		default:
-			fmt.Printf("%s: command not found\n", input)
+			if err := executeCommand(command); err != nil {
+        // technically not true but its good enough
+        fmt.Printf("%s: command not found\n", input)
+			}
 		}
 
 		fmt.Fprint(os.Stdout, "$ ")
