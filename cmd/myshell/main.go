@@ -18,9 +18,44 @@ type Command struct {
 	args    []string
 }
 
-func parseInput(input string) Command {
+func parseArgs(args []string) []string {
+	var item string
+	var items []string
+
+	openQuote := 0
+	singleQuote := '\''
+
+	for _, arg := range strings.Join(args, " ") {
+
+		if arg == singleQuote && openQuote == 0 {
+			openQuote = 1
+			continue
+		} else if arg == singleQuote && openQuote == 1 {
+			openQuote = 0
+			continue
+		}
+
+		if arg == ' ' && openQuote == 0 {
+			if item != "" {
+				items = append(items, item)
+				item = ""
+			}
+		} else {
+			item += string(arg)
+		}
+	}
+
+	if item != "" {
+		items = append(items, item)
+		item = ""
+	}
+
+	return items
+}
+
+func newCommand(input string) Command {
 	args := strings.Split(input, " ")
-	return Command{command: args[0], args: args[1:]}
+	return Command{command: args[0], args: parseArgs(args[1:])}
 }
 
 func FileExists(path string) bool {
@@ -67,7 +102,7 @@ func main() {
 	for scanner.Scan() {
 
 		input := scanner.Text()
-		command := parseInput(input)
+		command := newCommand(input)
 		strArgs := strings.Join(command.args, " ")
 
 		switch command.command {
@@ -84,14 +119,15 @@ func main() {
 			}
 
 		case "cd":
-      if strArgs == "~" {
-        home, _ := os.UserHomeDir()
+			if strArgs == "~" {
+				home, _ := os.UserHomeDir()
 				os.Chdir(home)
-      } else if FileExists(strArgs) {
+			} else if FileExists(strArgs) {
 				os.Chdir(strArgs)
 			} else {
 				fmt.Printf("cd: %s: No such file or directory\n", strArgs)
 			}
+
 		case "pwd":
 			dir, _ := os.Getwd()
 			fmt.Printf("%s\n", dir)
