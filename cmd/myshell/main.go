@@ -18,42 +18,97 @@ type Command struct {
 	args    []string
 }
 
+const (
+	space       = ' '
+	singleQuote = '\''
+	doubleQuote = '"'
+	escape      = '\\'
+)
+
+func trimQuotes(text string) string {
+	for _, quote := range []string{"'", "\""} {
+		text = strings.Trim(text, quote)
+	}
+	return text
+}
+
 func parseArgs(args []string) []string {
+	if len(args) == 0 {
+		return args
+	}
+
 	var item string
 	var items []string
 
-	openQuote := 0
+	// doubleOpenQuote := 0
+	//
+	// var currentQuote byte
 
-	singleQuote := '\''
-	doubleQuote := '"'
-  var currentQuote rune
+	text := strings.Join(args, " ")
+	// textLen := len(text)
 
-	for _, arg := range strings.Join(args, " ") {
+	quoteOpen := false
+	singleQuoteOpen := false
+	doubleQuoteOpen := false
+	var isEscape bool
 
-		if (arg == singleQuote || arg == doubleQuote) && openQuote == 0 {
-			openQuote = 1
-      currentQuote = arg
-			continue
-		} else if (arg == currentQuote) && openQuote == 1 {
-			openQuote = 0
-			continue
+	for i := 0; i < len(text); i++ {
+		char := text[i]
+		// fmt.Printf("char: %v\n", string(char))
+
+		if !doubleQuoteOpen && char == escape {
+			isEscape = true
+			char = text[i+1]
+			i += 1
 		}
 
-		if arg == ' ' && openQuote == 0 {
+		if !isEscape && char == singleQuote {
+			if singleQuoteOpen {
+				singleQuoteOpen = false
+				quoteOpen = false
+			} else if !singleQuoteOpen {
+				singleQuoteOpen = true
+				quoteOpen = true
+			}
+		}
+
+		if !isEscape && char == doubleQuote {
+			if doubleQuoteOpen {
+				doubleQuoteOpen = false
+				quoteOpen = false
+			} else if !doubleQuoteOpen {
+				doubleQuoteOpen = true
+				quoteOpen = true
+			}
+		}
+
+		if !isEscape && char == space && !quoteOpen {
 			if item != "" {
-				items = append(items, item)
+				items = append(items, trimQuotes(item))
 				item = ""
 			}
 		} else {
-			item += string(arg)
+			item += string(char)
 		}
+		//
+		// if isEscape {
+		// }
+
+		isEscape = false
 	}
 
 	if item != "" {
-		items = append(items, item)
+		items = append(items, trimQuotes(item))
 		item = ""
 	}
 
+	// fmt.Println("[debug] items:")
+	// for _, item := range items {
+	// 	fmt.Printf("  - %v\n", item)
+	// }
+	//
+	// fmt.Println()
+	//
 	return items
 }
 
