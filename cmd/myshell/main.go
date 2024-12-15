@@ -23,14 +23,18 @@ func parseArgs(args []string) []string {
 	var items []string
 
 	openQuote := 0
+
 	singleQuote := '\''
+	doubleQuote := '"'
+  var currentQuote rune
 
 	for _, arg := range strings.Join(args, " ") {
 
-		if arg == singleQuote && openQuote == 0 {
+		if (arg == singleQuote || arg == doubleQuote) && openQuote == 0 {
 			openQuote = 1
+      currentQuote = arg
 			continue
-		} else if arg == singleQuote && openQuote == 1 {
+		} else if (arg == currentQuote) && openQuote == 1 {
 			openQuote = 0
 			continue
 		}
