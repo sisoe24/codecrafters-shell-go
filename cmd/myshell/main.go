@@ -19,10 +19,10 @@ type Command struct {
 }
 
 const (
-	space       = ' '
-	singleQuote = '\''
-	doubleQuote = '"'
-	escape      = '\\'
+	space        = ' '
+	SINGLE_QUOTE = '\''
+	DOUBLE_QUOTE = '"'
+	ESCAPE       = '\\'
 )
 
 func trimQuotes(text string) string {
@@ -40,75 +40,58 @@ func parseArgs(args []string) []string {
 	var item string
 	var items []string
 
-	// doubleOpenQuote := 0
-	//
-	// var currentQuote byte
-
 	text := strings.Join(args, " ")
-	// textLen := len(text)
 
-	quoteOpen := false
-	singleQuoteOpen := false
-	doubleQuoteOpen := false
-	var isEscape bool
+	openQuote := false
+	openSingleQuote := false
+	openDoubleQuote := false
+	openEscape := false
 
 	for i := 0; i < len(text); i++ {
 		char := text[i]
-		// fmt.Printf("char: %v\n", string(char))
 
-		if !doubleQuoteOpen && char == escape {
-			isEscape = true
-			char = text[i+1]
-			i += 1
+		if char == ESCAPE && !openSingleQuote {
+			openEscape = true
+			i++
+			char = text[i]
 		}
 
-		if !isEscape && char == singleQuote {
-			if singleQuoteOpen {
-				singleQuoteOpen = false
-				quoteOpen = false
-			} else if !singleQuoteOpen {
-				singleQuoteOpen = true
-				quoteOpen = true
-			}
+		if !openEscape && !openDoubleQuote && char == SINGLE_QUOTE {
+			openSingleQuote = !openSingleQuote
+			openQuote = !openQuote
 		}
 
-		if !isEscape && char == doubleQuote {
-			if doubleQuoteOpen {
-				doubleQuoteOpen = false
-				quoteOpen = false
-			} else if !doubleQuoteOpen {
-				doubleQuoteOpen = true
-				quoteOpen = true
-			}
+		if !openEscape && char == DOUBLE_QUOTE {
+			openDoubleQuote = !openDoubleQuote
+			openQuote = !openQuote
 		}
 
-		if !isEscape && char == space && !quoteOpen {
-			if item != "" {
+		if char == space && !openQuote {
+
+			if (openEscape && item == "") || item != "" {
 				items = append(items, trimQuotes(item))
 				item = ""
 			}
-		} else {
-			item += string(char)
-		}
-		//
-		// if isEscape {
-		// }
 
-		isEscape = false
+		} else {
+			if openEscape && openDoubleQuote  {
+				item += string('\\') + string(char)
+			} else {
+				item += string(char)
+			}
+		}
+		openEscape = false
 	}
 
 	if item != "" {
 		items = append(items, trimQuotes(item))
-		item = ""
 	}
 
 	// fmt.Println("[debug] items:")
 	// for _, item := range items {
 	// 	fmt.Printf("  - %v\n", item)
 	// }
-	//
-	// fmt.Println()
-	//
+
 	return items
 }
 
