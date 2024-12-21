@@ -101,8 +101,8 @@ func parseArgs(args []string) []string {
 }
 
 func newCommand(input string) Command {
-	args := strings.Split(input, " ")
-	return Command{command: args[0], args: parseArgs(args[1:])}
+	args := parseArgs(strings.Split(input, " "))
+	return Command{command: args[0], args: args[1:]}
 }
 
 func FileExists(path string) bool {
