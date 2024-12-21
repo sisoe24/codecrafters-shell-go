@@ -50,41 +50,46 @@ func parseArgs(args []string) []string {
 	for i := 0; i < len(text); i++ {
 		char := text[i]
 
-		if char == ESCAPE && !openSingleQuote {
+		if char == ESCAPE {
 			openEscape = true
-			i++
-			char = text[i]
+			nextChar := text[i+1]
+
+			if !openQuote {
+				char = nextChar
+				i++
+			} else if !openSingleQuote {
+				if nextChar == DOUBLE_QUOTE || nextChar == '$' || nextChar == ESCAPE {
+					char = nextChar
+					i++
+				}
+			}
 		}
 
 		if !openEscape && !openDoubleQuote && char == SINGLE_QUOTE {
 			openSingleQuote = !openSingleQuote
 			openQuote = !openQuote
+			continue
 		}
 
-		if !openEscape && char == DOUBLE_QUOTE {
+		if !openEscape && !openSingleQuote && char == DOUBLE_QUOTE {
 			openDoubleQuote = !openDoubleQuote
 			openQuote = !openQuote
+			continue
 		}
 
 		if char == space && !openQuote {
-
 			if (openEscape && item == "") || item != "" {
-				items = append(items, trimQuotes(item))
+				items = append(items, item)
 				item = ""
 			}
-
 		} else {
-			if openEscape && openDoubleQuote  {
-				item += string('\\') + string(char)
-			} else {
-				item += string(char)
-			}
+			item += string(char)
 		}
 		openEscape = false
 	}
 
 	if item != "" {
-		items = append(items, trimQuotes(item))
+		items = append(items, item)
 	}
 
 	// fmt.Println("[debug] items:")
