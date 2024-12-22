@@ -47,6 +47,12 @@ func (c *Command) setOutput() {
 			panic(err)
 		}
 		c.stdout = file
+	case ">>", "1>>":
+		file, err := os.OpenFile(redirectArgs[0], os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			panic(err)
+		}
+		c.stdout = file
 	case "2>":
 		file, err := os.Create(redirectArgs[0])
 		if err != nil {
