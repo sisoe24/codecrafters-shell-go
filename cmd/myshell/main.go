@@ -59,6 +59,12 @@ func (c *Command) setOutput() {
 			panic(err)
 		}
 		c.stderr = file
+	case "2>>":
+		file, err := os.OpenFile(redirectArgs[0], os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			panic(err)
+		}
+		c.stderr = file
 	}
 }
 
@@ -180,7 +186,6 @@ func executeCommand(command Command, args ...string) error {
 
 	return nil
 }
-
 
 func main() {
 	fmt.Fprint(os.Stdout, "$ ")
