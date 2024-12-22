@@ -14,8 +14,47 @@ import (
 var _ = fmt.Fprint
 
 type Command struct {
+	stdout  *os.File
+	stderr  *os.File
 	command string
 	args    []string
+}
+
+func (c *Command) setOutput() {
+	var args []string
+	var redirect string
+	var redirectArgs []string
+
+	for i, arg := range c.args {
+		if strings.Contains(arg, ">") {
+			redirect = arg
+			redirectArgs = c.args[i+1:]
+			break
+		} else {
+			args = append(args, arg)
+		}
+	}
+
+	c.args = args
+
+	c.stdout = os.Stdout
+	c.stderr = os.Stderr
+
+	switch redirect {
+	case ">", "1>":
+		file, err := os.Create(redirectArgs[0])
+		if err != nil {
+			panic(err)
+		}
+		c.stdout = file
+	}
+}
+
+func newCommand(input string) Command {
+	args := parseArgs(strings.Split(input, " "))
+	c := Command{command: args[0], args: args[1:]}
+	c.setOutput()
+	return c
 }
 
 const (
@@ -100,11 +139,6 @@ func parseArgs(args []string) []string {
 	return items
 }
 
-func newCommand(input string) Command {
-	args := parseArgs(strings.Split(input, " "))
-	return Command{command: args[0], args: args[1:]}
-}
-
 func FileExists(path string) bool {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return false
@@ -112,27 +146,40 @@ func FileExists(path string) bool {
 	return true
 }
 
-func binExists(paths string, bin string) bool {
+func binExists(paths string, bin string) string {
 	for _, path := range strings.Split(paths, ":") {
 		fp := filepath.Join(path, bin)
 		if FileExists(fp) {
-			fmt.Printf("%s is %s/%s\n", bin, path, bin)
-			return true
+			return fmt.Sprintf("%s is %s/%s\n", bin, path, bin)
 		}
 	}
-	return false
+	return ""
 }
 
-func executeCommand(command Command) error {
+func executeCommand(command Command, stdOut, stdErr *os.File) error {
 	cmd := exec.Command(command.command, command.args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	cmd.Stdout = stdOut
+	cmd.Stderr = stdErr
 
-	if err := cmd.Run(); err != nil {
+	err := cmd.Run()
+	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func parseFileArgs(c *Command) string {
+	var args []string
+	for _, arg := range c.args {
+		if FileExists(arg) {
+			args = append(args, arg)
+		} else {
+			fmt.Fprintf(c.stderr, "%s: %s: No such file or directory\n", c.command, arg)
+		}
+	}
+	c.args = args
+	return ""
 }
 
 func main() {
@@ -150,6 +197,10 @@ func main() {
 
 		input := scanner.Text()
 		command := newCommand(input)
+
+		stdout := command.stdout
+		stderr := command.stderr
+
 		strArgs := strings.Join(command.args, " ")
 
 		switch command.command {
@@ -158,11 +209,11 @@ func main() {
 			arg := command.args[0]
 
 			if slices.Contains(builtins, arg) {
-				fmt.Printf("%s is a shell builtin\n", arg)
-			} else if binExists(ENV_PATH, arg) {
-				// kind of ugly having nothing to do here
+				fmt.Fprintf(stdout, "%s is a shell builtin\n", arg)
+			} else if out := binExists(ENV_PATH, arg); out != "" {
+				fmt.Fprint(stdout, out)
 			} else {
-				fmt.Printf("%s: not found\n", arg)
+				fmt.Fprintf(stderr, "%s: not found\n", arg)
 			}
 
 		case "cd":
@@ -172,23 +223,31 @@ func main() {
 			} else if FileExists(strArgs) {
 				os.Chdir(strArgs)
 			} else {
-				fmt.Printf("cd: %s: No such file or directory\n", strArgs)
+				fmt.Fprintf(stderr, "cd: %s: No such file or directory\n", strArgs)
 			}
 
 		case "pwd":
 			dir, _ := os.Getwd()
-			fmt.Printf("%s\n", dir)
+			fmt.Fprintf(stdout, "%s\n", dir)
+
 		case "echo":
-			fmt.Printf("%s\n", strArgs)
+			fmt.Fprintf(stdout, "%s\n", strArgs)
+
 		case "exit":
 			os.Exit(0)
+
+		case "ls", "cat":
+			parseFileArgs(&command)
+			fallthrough
+
 		default:
-			if err := executeCommand(command); err != nil {
+			if err := executeCommand(command, stdout, stderr); err != nil {
 				// technically not true but its good enough
-				fmt.Printf("%s: command not found\n", input)
+				fmt.Fprintf(stdout, "%s: command not found\n", input)
 			}
 		}
 
 		fmt.Fprint(os.Stdout, "$ ")
+
 	}
 }
