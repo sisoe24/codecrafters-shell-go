@@ -47,6 +47,12 @@ func (c *Command) setOutput() {
 			panic(err)
 		}
 		c.stdout = file
+	case "2>":
+		file, err := os.Create(redirectArgs[0])
+		if err != nil {
+			panic(err)
+		}
+		c.stderr = file
 	}
 }
 
@@ -156,10 +162,10 @@ func binExists(paths string, bin string) string {
 	return ""
 }
 
-func executeCommand(command Command, stdOut, stdErr *os.File) error {
-	cmd := exec.Command(command.command, command.args...)
-	cmd.Stdout = stdOut
-	cmd.Stderr = stdErr
+func executeCommand(command Command, args ...string) error {
+	cmd := exec.Command(command.command, args...)
+	cmd.Stdout = command.stdout
+	cmd.Stderr = command.stderr
 
 	err := cmd.Run()
 	if err != nil {
@@ -169,18 +175,6 @@ func executeCommand(command Command, stdOut, stdErr *os.File) error {
 	return nil
 }
 
-func parseFileArgs(c *Command) string {
-	var args []string
-	for _, arg := range c.args {
-		if FileExists(arg) {
-			args = append(args, arg)
-		} else {
-			fmt.Fprintf(c.stderr, "%s: %s: No such file or directory\n", c.command, arg)
-		}
-	}
-	c.args = args
-	return ""
-}
 
 func main() {
 	fmt.Fprint(os.Stdout, "$ ")
@@ -236,15 +230,23 @@ func main() {
 		case "exit":
 			os.Exit(0)
 
-		case "ls", "cat":
-			parseFileArgs(&command)
-			fallthrough
-
 		default:
-			if err := executeCommand(command, stdout, stderr); err != nil {
-				// technically not true but its good enough
-				fmt.Fprintf(stdout, "%s: command not found\n", input)
+
+			if (command.command == "ls" || command.command == "cat") && len(command.args) != 0 {
+				for _, arg := range command.args {
+					if FileExists(arg) {
+						executeCommand(command, arg)
+					} else {
+						fmt.Fprintf(command.stderr, "%s: %s: No such file or directory\n", command.command, arg)
+					}
+				}
+			} else {
+				if err := executeCommand(command, command.args...); err != nil {
+					// technically not true but its good enough
+					fmt.Fprintf(stdout, "%s: command not found\n", input)
+				}
 			}
+
 		}
 
 		fmt.Fprint(os.Stdout, "$ ")
