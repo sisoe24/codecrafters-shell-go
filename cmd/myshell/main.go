@@ -149,11 +149,6 @@ func parseArgs(args []string) []string {
 		items = append(items, item)
 	}
 
-	// fmt.Println("[debug] items:")
-	// for _, item := range items {
-	// 	fmt.Printf("  - %v\n", item)
-	// }
-
 	return items
 }
 
@@ -164,8 +159,8 @@ func FileExists(path string) bool {
 	return true
 }
 
-func binExists(paths string, bin string) string {
-	for _, path := range strings.Split(paths, ":") {
+func binExists(paths []string, bin string) string {
+	for _, path := range paths {
 		fp := filepath.Join(path, bin)
 		if FileExists(fp) {
 			return fmt.Sprintf("%s is %s/%s\n", bin, path, bin)
@@ -197,6 +192,7 @@ func main() {
 	}
 
 	ENV_PATH := os.Getenv("PATH")
+  paths := strings.Split(ENV_PATH, ":")
 
 	for scanner.Scan() {
 
@@ -215,7 +211,7 @@ func main() {
 
 			if slices.Contains(builtins, arg) {
 				fmt.Fprintf(stdout, "%s is a shell builtin\n", arg)
-			} else if out := binExists(ENV_PATH, arg); out != "" {
+			} else if out := binExists(paths, arg); out != "" {
 				fmt.Fprint(stdout, out)
 			} else {
 				fmt.Fprintf(stderr, "%s: not found\n", arg)
@@ -259,6 +255,15 @@ func main() {
 			}
 
 		}
+
+
+    if command.stdout != os.Stdout {
+      command.stdout.Close()
+    }
+
+    if command.stderr != os.Stderr {
+      command.stderr.Close()
+    }
 
 		fmt.Fprint(os.Stdout, "$ ")
 
